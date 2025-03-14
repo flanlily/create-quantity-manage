@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>プリンター インク 在庫管理</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        h1 { margin: 20px 0; }
+        #inventory { width: 90%; max-width: 1200px; margin-bottom: 20px; }
+        .item { padding: 10px; border: 1px solid #ccc; border-radius: 8px; text-align: left; }
+
+        input[type="number"] { width: 60px; }
+    </style>
+</head>
+<body>
+    <h1>Printer Ink Management</h1>
+    <div id="inventory"></div>
+    <button onclick="updateGitHub()">GitHubに保存</button>
+
+    <script>
+        const repoOwner = "あなたのGitHubユーザー名";  // GitHubのユーザー名
+        const repoName = "inventory-management";       // リポジトリ名
+        const filePath = "data/inventory.json";        // JSONファイルのパス
+        const githubToken = "ghp_xxxx";                // GitHubのアクセストークン
+
+        let stock = {};
+
+        async function fetchInventory() {
+            try {
+                const response = await fetch(`https://raw.githubusercontent.com/${repoOwner}/${repoName}/main/${filePath}`);
+                if (!response.ok) throw new Error("データの取得に失敗しました");
+                stock = await response.json();
+                displayInventory();
+            } catch (error) {
+                console.error(error);
+                alert("在庫データの取得に失敗しました。");
+            }
+        }
+
+        function displayInventory() {
+            let inventoryHTML = '';
+            Object.keys(stock).forEach(printer => {
+                inventoryHTML += `<div class="item"><strong>${printer}</strong><ul>`;
+                Object.keys(stock[printer]).forEach(color => {
+                    inventoryHTML += `
+                        <li>${color}: <input type="number" value="${stock[printer][color]}" onchange="updateStock('${printer}', '${color}', this.value)"></li>
+                    `;
+                });
+                inventoryHTML += '</ul></div>';
+            });
+            document.getElementById('inventory').innerHTML = inventoryHTML;
+        }
+
+        function updateStock(printer, color, value) {
+            stock[printer][color] = parseInt(value, 10) || 0;
+        }
+
+        async function updateGitHub() {
+            const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/${filePath}`;
+
+            try {
+                const fileResponse = await fetch(apiUrl, { headers: { Authorization: `token ${githubToken}` } });
+                if (!fileResponse.ok) throw new Error("GitHubのファイル情報取得に失敗しました");
+                const fileData = await fileResponse.json();
+                const content = btoa(JSON.stringify(stock, null, 2));  // Base64エンコード
+
+                const payload = {
+                    message: "在庫データを更新",
+                    content: content,
+                    sha: fileData.sha
+                };
+
+                const updateResponse = await fetch(apiUrl, {
+                    method: "PUT",
+                    headers: {
+                        Authorization: `token ${githubToken}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (updateResponse.ok) {
+                    alert("GitHub にデータを保存しました！");
+                } else {
+                    throw new Error("更新に失敗しました");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("データの更新に失敗しました。");
+            }
+        }
+
+        fetchInventory();
+    </script>
+</body>
+</html>
