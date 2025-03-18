@@ -26,19 +26,23 @@
 <body>
     <h1>Printer Ink Management</h1>
     <div id="inventory"></div>
+    <button onclick="updateGitHub()">GitHubに保存</button>
 
     <script>
-        const jsonURL = "https://flanlily.github.io/create-quantity-manage/date/inventory.json"; // GitHub Pages の URL
+        const jsonUrl = "https://flanlily.github.io/create-quantity-manage/date/inventory.json";
         let stock = {};
 
         async function fetchInventory() {
             try {
-                const response = await fetch(jsonURL);
-                if (!response.ok) throw new Error("データの取得に失敗しました");
+                const response = await fetch(jsonUrl, { mode: 'cors' }); // CORS対応
+                if (!response.ok) {
+                    throw new Error(`データの取得に失敗しました (HTTP ${response.status})`);
+                }
                 stock = await response.json();
+                console.log("取得したデータ:", stock);
                 displayInventory();
             } catch (error) {
-                console.error(error);
+                console.error("エラー詳細:", error);
                 alert("在庫データの取得に失敗しました。");
             }
         }
@@ -61,7 +65,7 @@
             stock[printer][color] = parseInt(value, 10) || 0;
         }
 
-        fetchInventory();
+        fetchInventory(); // ページ読み込み時にデータ取得
     </script>
 </body>
 </html>
