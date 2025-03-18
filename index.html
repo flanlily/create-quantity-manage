@@ -28,13 +28,18 @@
     <div id="inventory"></div>
 
     <script>
+        // GitHub API 経由でJSONを取得する
         const jsonURL = "https://api.github.com/repos/flanlily/create-quantity-manage/contents/date/inventory.json";
         let stock = {};
 
         async function fetchInventory() {
             try {
-                const response = await fetch(jsonURL, { headers: { Accept: "application/vnd.github.v3.raw" } });
+                const response = await fetch(jsonURL, {
+                    headers: { "Accept": "application/vnd.github.v3.raw" }
+                });
+
                 if (!response.ok) throw new Error(`データの取得に失敗しました (HTTP ${response.status})`);
+
                 stock = await response.json();
                 console.log("取得したデータ:", stock);
                 displayInventory();
@@ -62,6 +67,7 @@
             stock[printer][color] = parseInt(value, 10) || 0;
         }
 
+        // JSONデータを取得
         fetchInventory();
     </script>
 </body>
