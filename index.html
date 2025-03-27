@@ -12,39 +12,55 @@
             align-items: center;
             text-align: center;
             margin: 0;
-            padding: 0;
+            padding: 20px;
             box-sizing: border-box;
         }
 
         h1 { margin: 20px 0; }
         #inventory { width: 90%; max-width: 1200px; margin-bottom: 20px; }
-        .item { padding: 10px; border: 1px solid #ccc; border-radius: 8px; text-align: left; }
-
-        input[type="number"] { width: 60px; }
+        .item { padding: 10px; border: 1px solid #ccc; border-radius: 8px; text-align: left; margin-bottom: 10px; }
+        .printer-name { font-weight: bold; font-size: 18px; margin-bottom: 5px; }
+        input[type="number"] { width: 60px; text-align: center; }
+        button {
+            padding: 10px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button:hover { background: #0056b3; }
     </style>
 </head>
 <body>
-    <h1>Printer Ink Management</h1>
+    <h1>プリンター インク 在庫管理</h1>
     <div id="inventory"></div>
+    <button onclick="saveInventory()">変更を保存</button>
 
     <script>
-        // GitHub API 経由でJSONを取得する
-        const jsonURL = "https://api.github.com/repos/flanlily/create-quantity-manage/contents/date/inventory.json";
+        const jsonURL = "https://flanlily.github.io/create-quantity-manage/date/inventory.json"; // GitHub Pages の URL
+        const githubAPI = "https://api.github.com/repos/flanlily/create-quantity-manage/contents/date/inventory.json";
+        const githubToken = "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN"; // ここにGitHubのトークンを設定
+
         let stock = {};
+        let sha = ""; // 現在のファイルのSHA値を取得するため
 
         async function fetchInventory() {
             try {
-                const response = await fetch(jsonURL, {
-                    headers: { "Accept": "application/vnd.github.v3.raw" }
-                });
-
-                if (!response.ok) throw new Error(`データの取得に失敗しました (HTTP ${response.status})`);
-
+                const response = await fetch(jsonURL);
+                if (!response.ok) throw new Error("データの取得に失敗しました");
                 stock = await response.json();
-                console.log("取得したデータ:", stock);
                 displayInventory();
+
+                // SHA取得用のAPIリクエスト
+                const shaResponse = await fetch(githubAPI, {
+                    headers: { Authorization: `token ${githubToken}` }
+                });
+                const shaData = await shaResponse.json();
+                sha = shaData.sha;
             } catch (error) {
-                console.error("エラー詳細:", error);
+                console.error(error);
                 alert("在庫データの取得に失敗しました。");
             }
         }
@@ -52,7 +68,7 @@
         function displayInventory() {
             let inventoryHTML = '';
             Object.keys(stock).forEach(printer => {
-                inventoryHTML += `<div class="item"><strong>${printer}</strong><ul>`;
+                inventoryHTML += `<div class="item"><div class="printer-name">${printer}</div><ul>`;
                 Object.keys(stock[printer]).forEach(color => {
                     inventoryHTML += `
                         <li>${color}: <input type="number" value="${stock[printer][color]}" onchange="updateStock('${printer}', '${color}', this.value)"></li>
@@ -67,7 +83,32 @@
             stock[printer][color] = parseInt(value, 10) || 0;
         }
 
-        // JSONデータを取得
+        async function saveInventory() {
+            try {
+                const updatedContent = JSON.stringify(stock, null, 4);
+                const base64Content = btoa(unescape(encodeURIComponent(updatedContent))); // Base64エンコード
+
+                const response = await fetch(githubAPI, {
+                    method: "PUT",
+                    headers: {
+                        Authorization: `token ${githubToken}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        message: "在庫データを更新",
+                        content: base64Content,
+                        sha: sha // 更新のためSHAを送信
+                    })
+                });
+
+                if (!response.ok) throw new Error("更新に失敗しました");
+                alert("在庫データが更新されました！");
+            } catch (error) {
+                console.error(error);
+                alert("在庫データの保存に失敗しました。");
+            }
+        }
+
         fetchInventory();
     </script>
 </body>
